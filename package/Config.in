@@ -1553,6 +1553,8 @@ endmenu
 
 menu "Perso"
 	source "package/helloWorld/Config.in"
+	source "package/khelloWorld/Config.in"
+	source "package/pinController/Config.in"
 endmenu
 
 endmenu
