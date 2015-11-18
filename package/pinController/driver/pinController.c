@@ -14,28 +14,31 @@ static struct gpio mygpios[] = {
 		{ 4,GPIOF_OUT_INIT_HIGH, "led3"},
 		{ 5,GPIOF_IN, "button"}
 };
-static void all_off(void){
+static void leds_off(void){
 	gpio_set_value(1,OFF);
 	gpio_set_value(2,OFF);
 	gpio_set_value(4,OFF); 		
 }
-static void all_on(void){
+static void leds_on(void){
 	gpio_set_value(1,ON);
 	gpio_set_value(2,ON);
 	gpio_set_value(4,ON); 		
 }
-static void set_all(int value){
+static void set_leds(int value){
 	gpio_set_value(1,value);
 	gpio_set_value(2,value);
 	gpio_set_value(4,value); 		
 }
-
+//Fonction a executer dans une tasklet
 void tasklet_button(void){
 	etat = 1 - etat;
-	set_all(etat);
+	set_leds(etat);
 }
 DECLARE_TASKLET(tasklet_button_id, tasklet_button ,0);
 
+//fonction appellée lors de l'arrivée de l'interuption
+//Dois etre légére
+//Ne Dois Pas faire de sleep
 irqreturn_t buttonHandler(int irq, void *data){
  	tasklet_schedule(&tasklet_button_id);
 	return IRQ_HANDLED;	
@@ -58,11 +61,12 @@ static void __exit tst_exit(void)
 {
 	printk(KERN_INFO"Goodbye world!\n");
 	gpio_free_array(mygpios, ARRAY_SIZE(mygpios));
+	free_irq(irq_number,NULL);
 }
 
 module_init(tst_init);
 module_exit(tst_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("");
-MODULE_DESCRIPTION("KHello World!");
+MODULE_AUTHOR("Le trio étrange");
+MODULE_DESCRIPTION("PinController");
