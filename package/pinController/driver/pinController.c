@@ -9,10 +9,12 @@
 #define OFF 1
 static int irq_number;
 static int etat = 0;
-unsigned long timer_interval_ns = 1e6;
-static struct hrtimer hr_timer;
-static ktime_t ktime_time, ktime_timeout;
+unsigned long timer_interval_ns_All = 10000;
+static struct hrtimer hr_timerAll;
+static ktime_t ktime_time, ktime_timeout, ktimeAll;
+static unsigned char tick_count=0, color_R, color_G, color_B;
 static struct gpio mygpios[] = {
+
 	{ 1,GPIOF_OUT_INIT_HIGH, "led1"},
 	{ 2,GPIOF_OUT_INIT_HIGH, "led2"},
 	{ 4,GPIOF_OUT_INIT_HIGH, "led3"},
@@ -60,6 +62,9 @@ static int __init tst_init(void)
 	somme_pause=0, 
 	temps_total=2000;
 
+	set_RGB(20, 45, 86);
+	timer_init();
+
 	printk(KERN_INFO"Hello world!\n");
 	err = gpio_request_array(mygpios,ARRAY_SIZE(mygpios));
 	irq_number = gpio_to_irq(5);
@@ -72,15 +77,56 @@ static void __exit tst_exit(void)
 	gpio_free_array(mygpios, ARRAY_SIZE(mygpios));
 	free_irq(irq_number,NULL);
 }
-/*
-static int __init timer_init(void) {
+
+static void set_RGB(unsigned char R, unsigned char G, unsigned char B)
+{
+	color_R = R;
+	color_G = G;
+	color_B = B;
+}
+
+enum hrtimer_restart timer_callback( struct hrtimer *timer_for_restart )
+{
+  	ktime_t currtime , interval;
+  	currtime  = ktime_get();
+
+	if (tick_count == 0) {
+		if (color_R > 0)
+			gpio_set_value(1,ON);
+		if (color_G > 0)
+			gpio_set_value(2,ON);
+		if (color_B > 0)
+			gpio_set_value(4,ON);
+	} else {
+		if (tick_count == color_R)
+			gpio_set_value(1,OFF);
+		if (tick_count == color_G)
+			gpio_set_value(2,OFF);
+		if (tick_count == color_B)
+			gpio_set_value(4,OFF);
+	
+	interval = ktime_set(0,timer_interval_ns_All);
+			
+	tick_count += 1;
+  	hrtimer_forward(timer_for_restart, currtime , interval);
+	return HRTIMER_RESTART;
+}
+
+static int timer_init(void) {
 	ktime = ktime_set( 0, timer_interval_ns );
-	hrtimer_init( &hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
+	hrtimer_init( &hr_timerAll, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
 	hr_timer.function = &timer_callback;
-	hrtimer_start( &hr_timer, ktime, HRTIMER_MODE_REL );
+	hrtimer_start( &hr_timerAll, ktimeAll, HRTIMER_MODE_REL );
 	return 0;
 }
-*/
+
+static void timer_exit(void) {
+	int ret;
+  	ret = hrtimer_cancel( &hr_timer );
+  	if (ret) printk("The timer was still in use...\n");
+  	printk("HR Timer module uninstalling\n");
+	
+}
 
 module_init(tst_init);
 module_exit(tst_exit);
