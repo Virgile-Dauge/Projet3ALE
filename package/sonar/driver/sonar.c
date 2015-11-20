@@ -25,9 +25,10 @@ static int device_write(struct file *f, const char __user *data, size_t size, lo
 static int device_open(struct inode *i, struct file *f);
 static int device_release(struct inode *i, struct file *f);
 static long device_ioctl(struct file *f, unsigned int, unsigned long);
+int getDist();
 
 void sendStandartTTL(int pin);
-static int dist = 0;
+static int dist = 0, sonarAck = 0;
 static int irq_sonarEcho;
 static ktime_t ktime_sonarEchoUp,ktime_sonarEchoResult;
 
@@ -77,7 +78,7 @@ static long device_ioctl(struct file *f, unsigned int cmd, unsigned long long1)
 	switch(cmd)
 	{
 		case GET_DIST :
-			
+			retval = getDist();
 		 break;
 		default : retval = -EINVAL; break;
 	}
@@ -95,6 +96,16 @@ void sendStandartTTL(int pin){
 	udelay(10);
 	gpio_set_value(pin,0);
 }
+int getDist(){
+	sonarAck = 0;
+	triggerSonar();
+	int timeout = 0;
+	while(timeout<10 && sonarAck != 1){
+		msleep(10);
+		timeout ++;
+	}
+	return dist;
+}
 //fonction appellée lors de l'arrivée de l'interuption déclanchée par la pin PIN_SONAR_ECHO
 //Il n'est pas possible d'effectuer ce calcul dans une tasklet, étant donné la rapidité du signal à analyser.
 irqreturn_t sonarEchoHandler(int irq, void *data){
@@ -108,6 +119,7 @@ irqreturn_t sonarEchoHandler(int irq, void *data){
 		//On calcule la distance en divisant les microsecondes par 58.
 		//Le cast permet d'effectuer le calcul sur un système 32bits.
 		dist = ((unsigned long)ktime_to_us(ktime_sonarEchoResult))/58;
+		sonarAck = 1;
 		printk(KERN_INFO "EEEEEECHOOOOOOO  %d \n",dist);
 	}
 	return IRQ_HANDLED;
