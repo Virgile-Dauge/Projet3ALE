@@ -1,0 +1,4 @@
+config BR2_PACKAGE_SONAR
+	bool sonar
+	help
+	  driver sonar
