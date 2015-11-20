@@ -12,3 +12,4 @@ struct RGB_delay_data {
 #define LEDS_OFF _IORW(LED_MAGIC, 0)
 #define LEDS_ON _IORW(LED_MAGIC, 1)
 #define SET_RGB _IORW(LED_MAGIC, 2, struct RGB_delay_data)
+#define SET_GRADIENT_RGB _IORW(LED_MAGIC, 3, struct RGB_delay_data)

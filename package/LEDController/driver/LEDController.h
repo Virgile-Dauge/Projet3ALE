@@ -20,6 +20,11 @@ static struct gpio mygpios[] = {
 	{ 5,GPIOF_IN, "button"}
 };
 
+int retval;
+struct device *dev;
+static struct class *LED_class;
+dev_t devt;
+
 static void leds_off(void);
 
 static void leds_on(void);
@@ -47,13 +52,14 @@ static long device_ioctl(struct file *f, unsigned int cmd, unsigned long long1)
 			struct RGB_delay_data RGBdd = &long1;
 			set_RGB(RGBdd.R, RGBdd.G, RGBdd.B);
 			break;
+		case SET_GRADIENT_RGB :
+			struct RGB_delay_data RGBdd = &long1;
+			set_gradient_RGB(RGBdd.R, RGBdd.G, RGBdd.B, RGBdd.delay);
+			break;
 		default : retval = -EINVAL; break;
 	}
 	printk(KERN_INFO"ioctl\n");
 	return retval;
 }
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Le trio étrange");
-MODULE_DESCRIPTION("PinController");
 

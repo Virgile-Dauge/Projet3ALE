@@ -79,6 +79,7 @@ enum hrtimer_restart timer_callback( struct hrtimer *timer_for_restart )
 }
 
 void timer_init(void) {
+	i
 	hrtimer_init( &hr_timerAll, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
 	hr_timerAll.function = &timer_callback;
 	hrtimer_start( &hr_timerAll, interval, HRTIMER_MODE_REL );
@@ -87,6 +88,26 @@ void timer_init(void) {
 static int __init tst_init(void)
 {
 	int err = 0;
+	retval = register_chrdev(0, "LED", &fops);
+	if(retval <0){
+		printk(KERN_INFO "Echec de register_chrdev\n");
+		return retval;
+	}
+	LED_class = class_create(THIS_MODULE, "monLED");
+	if(IS_ERR(LED_class)){
+		printk(KERN_INFO "echec class_create\n");
+		retval = PTR_ERR(LED_class);
+		return retval;
+	}
+
+	devt = MKDEV(major, 0);
+	dev=device_create(LED_class, NULL, devt, NULL, "LED");
+	status = IS_ERR(dev) ? PTR_ERR(dev):0;
+
+	if(status!=0){
+		printk(KERN_ERR "erreur de device_create\n");
+		return status;
+	}
 
 	interval = ktime_set(0,timer_interval_ns_All);
 
