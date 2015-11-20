@@ -1554,7 +1554,7 @@ endmenu
 menu "Perso"
 	source "package/helloWorld/Config.in"
 	source "package/khelloWorld/Config.in"
-	source "package/pinController/Config.in"
+	source "package/sonar/Config.in"
 endmenu
 
 endmenu
