@@ -1555,6 +1555,7 @@ menu "Perso"
 	source "package/helloWorld/Config.in"
 	source "package/khelloWorld/Config.in"
 	source "package/pinController/Config.in"
+	source "package/LEDController/Config.in"
 endmenu
 
 endmenu

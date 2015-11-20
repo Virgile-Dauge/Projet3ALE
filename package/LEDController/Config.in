@@ -1,0 +1,4 @@
+config BR2_PACKAGE_LEDCONTROLLER
+	bool LEDController
+	help
+	  driver LEDController
