@@ -1,25 +1,5 @@
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/gpio.h>
-#include <linux/delay.h>
-#include <linux/interrupt.h>
-#include <linux/hrtimer.h>
+#include "pinController.h"
 
-#define ON 0
-#define OFF 1
-static int irq_number;
-static int etat = 0;
-unsigned long timer_interval_ns_All = 1000;
-static struct hrtimer hr_timerAll;
-static ktime_t ktime_time, ktime_timeout, ktimeAll;
-static unsigned char tick_count=0, color_R, color_G, color_B;
-static struct gpio mygpios[] = {
-
-	{ 1,GPIOF_OUT_INIT_HIGH, "led1"},
-	{ 2,GPIOF_OUT_INIT_HIGH, "led2"},
-	{ 4,GPIOF_OUT_INIT_HIGH, "led3"},
-	{ 5,GPIOF_IN, "button"}
-};
 static void leds_off(void){
 	gpio_set_value(1,OFF);
 	gpio_set_value(2,OFF);
@@ -35,36 +15,46 @@ static void set_leds(int value){
 	gpio_set_value(2,value);
 	gpio_set_value(4,value); 		
 }
-//Fonction a executer dans une tasklet
-void tasklet_button(void){
-	if (ktime_compare(ktime_sub(ktime_get(),ktime_time), ktime_timeout) == 1) {
-		etat = 1 - etat;
-		set_leds(etat);
-		ktime_time = ktime_get();
-	}
-}
-DECLARE_TASKLET(tasklet_button_id, tasklet_button ,0);
-
-//fonction appellée lors de l'arrivée de l'interuption
-//Dois etre légére
-//Ne Dois Pas faire de sleep
-irqreturn_t buttonHandler(int irq, void *data){
-	tasklet_schedule(&tasklet_button_id);
-	return IRQ_HANDLED;	
-}
 
 static void set_RGB(unsigned char R, unsigned char G, unsigned char B)
 {
-	color_R = R;
-	color_G = G;
-	color_B = B;
+	color_R = (R+1)/16;
+	color_G = (G+1)/16;
+	color_B = (B+1)/16;
+}
+
+static void gradient_RGB(unsigned char R, unsigned char G, unsigned char B, unsigned long delay)
+{
+	if (color_R > R) 
+		color_R -= 1;
+	else if (color_R < R)
+		color_R += 1;
+	if (color_B > B)
+		color_B -= 1;
+	else if (color_B < B)
+		color_B += 1;
+	if (color_G > G)
+		color_G -= 1;
+	else if (color_G < G)
+		color_G += 1;
+
+	if (color_R == R & color_G == G & color_B == B)
+		return;
+
+	mdelay(delay);
+
+	gradient_RGB(R, G, B, delay);
+}
+
+static void set_gradient_RGB(unsigned char R, unsigned char G, unsigned char B, unsigned long delay)
+{
+	gradient_RGB((R+1)/16, (G+1)/16, (B+1)/16, delay);
 }
 
 enum hrtimer_restart timer_callback( struct hrtimer *timer_for_restart )
 {
-  	ktime_t currtime , interval;
   	currtime  = ktime_get();
-
+	
 	if (tick_count == 0) {
 		if (color_R > 0)
 			gpio_set_value(1,ON);
@@ -80,8 +70,6 @@ enum hrtimer_restart timer_callback( struct hrtimer *timer_for_restart )
 		if (tick_count == color_B)
 			gpio_set_value(4,OFF);
 	}
-	
-	interval = ktime_set(0,timer_interval_ns_All);
 			
 	tick_count += 1;
 	if (tick_count == 16)
@@ -91,33 +79,49 @@ enum hrtimer_restart timer_callback( struct hrtimer *timer_for_restart )
 }
 
 void timer_init(void) {
-	ktimeAll = ktime_set( 0, timer_interval_ns_All );
 	hrtimer_init( &hr_timerAll, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
 	hr_timerAll.function = &timer_callback;
-	hrtimer_start( &hr_timerAll, ktimeAll, HRTIMER_MODE_REL );
+	hrtimer_start( &hr_timerAll, interval, HRTIMER_MODE_REL );
 }
 
 static int __init tst_init(void)
 {
-	ktime_timeout = ktime_set(0,10000);
-	ktime_time = ktime_get();
-	int err = 0, 
-	pause = 1, 
-	somme_pause=0, 
-	temps_total=2000;
+	int err = 0;
 
-	set_RGB(15, 0, 15);
+	interval = ktime_set(0,timer_interval_ns_All);
+
 	timer_init();
+
+	int i;
+	for (i=0; i<10; i++) {
+		set_gradient_RGB(255, 0, 0, 100);
+		set_gradient_RGB(255, 255, 0, 100);
+		set_gradient_RGB(0, 255, 0, 100);
+	}
+	leds_off();
+	set_gradient_RGB(255, 0, 0, 50);
+	set_gradient_RGB(0, 255, 0, 50);
+	set_gradient_RGB(0, 0, 255, 50);
+	set_gradient_RGB(255, 0, 255, 50);
 
 	printk(KERN_INFO"Hello world!\n");
 	err = gpio_request_array(mygpios,ARRAY_SIZE(mygpios));
-	irq_number = gpio_to_irq(5);
-	request_irq(irq_number, buttonHandler, IRQF_TRIGGER_FALLING,"button", NULL);
 	return err;
 }
 
 static void __exit tst_exit(void)
 {
+	int i;
+	for (i=0; i<20; i++) {
+		set_gradient_RGB(255, 0, 0, 10);
+		mdelay(10);
+		set_gradient_RGB(0, 0, 0, 10);
+		mdelay(10);
+		set_gradient_RGB(255, 255, 255, 10);
+		mdelay(10);
+	}
+	leds_off();
+
 	int ret;
   	ret = hrtimer_cancel( &hr_timerAll );
   	if (ret) printk("The timer was still in use...\n");
@@ -125,10 +129,7 @@ static void __exit tst_exit(void)
 
 	printk(KERN_INFO"Goodbye world!\n");
 	gpio_free_array(mygpios, ARRAY_SIZE(mygpios));
-	free_irq(irq_number,NULL);
 }
-
-
 
 module_init(tst_init);
 module_exit(tst_exit);
