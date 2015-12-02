@@ -37,6 +37,45 @@ static void gradient_RGB(unsigned char R, unsigned char G, unsigned char B, unsi
 
 static void set_gradient_RGB(unsigned char R, unsigned char G, unsigned char B, unsigned long delay);
 
+struct file_operations fops = {
+	.open=device_open,
+	.read=device_read,
+	.write=device_write,
+	.unlocked_ioctl = device_ioctl,
+	.release=device_release,
+};
+static int device_read(struct file *f, char __user *data, size_t size, loff_t *l)
+{
+	#if DEBUG
+	printk(KERN_INFO"read\n");
+	#endif
+	return size;
+}
+
+static int device_write(struct file *f, const char __user *data, size_t size, loff_t *l)
+{
+	#if DEBUG
+	printk(KERN_INFO"write\n");
+	#endif
+	return size;
+}
+
+static int device_open(struct inode *i, struct file *f)
+{
+	#if DEBUG
+	printk(KERN_INFO"open\n");
+	#endif
+	return 0;
+}
+
+static int device_release(struct inode *i, struct file *f)
+{
+	#if DEBUG
+	printk(KERN_INFO"release\n");
+	#endif
+	return 0;
+}
+
 static long device_ioctl(struct file *f, unsigned int cmd, unsigned long long1)
 {
 	int retval = 0;
@@ -58,7 +97,9 @@ static long device_ioctl(struct file *f, unsigned int cmd, unsigned long long1)
 			break;
 		default : retval = -EINVAL; break;
 	}
+	#if DEBUG
 	printk(KERN_INFO"ioctl\n");
+	#endif
 	return retval;
 }
 

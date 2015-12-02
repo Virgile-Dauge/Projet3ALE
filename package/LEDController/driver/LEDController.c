@@ -89,11 +89,14 @@ static int __init tst_init(void)
 {
 	int err = 0;
 	retval = register_chrdev(0, "LED", &fops);
+
 	if(retval <0){
 		printk(KERN_INFO "Echec de register_chrdev\n");
 		return retval;
 	}
+
 	LED_class = class_create(THIS_MODULE, "monLED");
+
 	if(IS_ERR(LED_class)){
 		printk(KERN_INFO "echec class_create\n");
 		retval = PTR_ERR(LED_class);
@@ -108,6 +111,9 @@ static int __init tst_init(void)
 		printk(KERN_ERR "erreur de device_create\n");
 		return status;
 	}
+
+	//réservation des pins
+	err = gpio_request_array(mygpios,ARRAY_SIZE(mygpios));
 
 	interval = ktime_set(0,timer_interval_ns_All);
 
@@ -142,6 +148,19 @@ static void __exit tst_exit(void)
 		mdelay(10);
 	}
 	leds_off();
+
+	//On libère le tableau des pins réservées
+	gpio_free_array(mygpios, ARRAY_SIZE(mygpios));
+	int ret;
+  	ret = hrtimer_cancel( &hr_timerAll );
+  	if (ret) printk("The timer was still in use...\n");
+  	printk("HR Timer module uninstalling\n");
+
+
+	device_destroy(LED_class, devt);
+	class_destroy(LED_class);
+	unregister_chrdev(MAJOR_NUM, "LED");
+	printk(KERN_INFO"SUCccessfuuuly UnLOadED\n");
 
 	int ret;
   	ret = hrtimer_cancel( &hr_timerAll );
