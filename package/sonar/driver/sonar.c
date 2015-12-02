@@ -91,11 +91,10 @@ static long device_ioctl(struct file *f, unsigned int cmd, unsigned long long1)
 	switch(cmd)
 	{
 		case GET_DIST :
-			//retval = getDist();
-			//retval = 77;
 			copy_to_user(long1,&dist,sizeof(retval));
 		break;
 		case SET_VAL:
+			//copy_from_user(long1,)
 			#if DEBUG
 			printk(KERN_INFO "FUCK: %d\n",&long1);
 			#endif
@@ -108,11 +107,11 @@ static long device_ioctl(struct file *f, unsigned int cmd, unsigned long long1)
 	return retval;
 }
 //Fonction a executer dans une tasklet
-void triggerSonar(){
+void triggerSonar(){	
+	#if DEBUG
+		printk(KERN_INFO "Trigger %d\n",dist);
+	#endif
 	ktime_sonarEchoUp = ktime_get();
-#if DEBUG
-	printk(KERN_INFO "Trigger\n");
-#endif
 	sendStandartTTL(PIN_SONAR_TRIG);
 }
 void sendStandartTTL(int pin){
@@ -120,38 +119,19 @@ void sendStandartTTL(int pin){
 	udelay(10);
 	gpio_set_value(pin,0);
 } 
-/*
-int getDist(){
-	sonarAck = 0;
-	triggerSonar();
-	int timeout = 0;
-	while(sonarAck != 1){
-		msleep(10);
-		timeout ++;
-		if(timeout>1000){
-			return -1;
-		}
-	}
-	return dist;
-}
-*/
 //fonction appellée lors de l'arrivée de l'interuption déclanchée par la pin PIN_SONAR_ECHO
 //Il n'est pas possible d'effectuer ce calcul dans une tasklet, étant donné la rapidité du signal à analyser.
 irqreturn_t sonarEchoHandler(int irq, void *data){
-	//On différencie le cas front montant du cas front decendant
-	//udelay(100);
-	if(gpio_get_value(PIN_SONAR_ECHO)!=0){
-		//printk(KERN_INFO " PAS EEEEEECHOOOOOOO  %d \n",dist);
+	//On différencie le cas front montant du cas front descendant
+	if(gpio_get_value(PIN_SONAR_ECHO)!= 0){
 		//lors du front montant, on enregistre le temps
 		ktime_sonarEchoUp = ktime_get();
-	}else{
-		//printk(KERN_INFO "Avant MAJ  %d \n",dist);
+	} else {
 		//lors du front descendant, on calcule l'intervale de temps depuis le front montant
 		ktime_sonarEchoResult = ktime_sub(ktime_get(),ktime_sonarEchoUp);
 		//On calcule la distance en divisant les microsecondes par 58.
 		//Le cast permet d'effectuer le calcul sur un système 32bits.
 		dist = ((unsigned long)ktime_to_us(ktime_sonarEchoResult))/58;
-		printk(KERN_INFO "EEEEEECHOOOOOOO  %d \n",dist);
 	}
 	return IRQ_HANDLED;
 }
@@ -192,7 +172,7 @@ static int __init tst_init(void)
 	}
 
 	devt = MKDEV(MAJOR_NUM, 0);
-	dev=device_create(sonar_class, NULL, devt, NULL, "sonar"); 
+	dev = device_create(sonar_class, NULL, devt, NULL, "sonar"); 
 	status = IS_ERR(dev) ? PTR_ERR(dev):0;
 
 	if(status!=0){
@@ -212,7 +192,7 @@ static int __init tst_init(void)
 
 	timer_init();
 
-	printk(KERN_ERR "Tout s'est très bien passé, c'est cool 42128177824\n"); //Fin de l'initialisation
+	printk(KERN_ERR "Tout s'est très bien passé, c'est cool 46\n"); //Fin de l'initialisation
 	return err;
 }
 static void __exit tst_exit(void)
